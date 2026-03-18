@@ -22,7 +22,10 @@ import type {
  * Actions are grouped by scopes so the same combinations can
  * be reused in different contexts (e.g. editor, modal, global).
  */
-export class SequenceController<T extends ToString> {
+export class SequenceController<
+  T extends ToString,
+  K extends SequenceEvent<T> = SequenceEvent<T>,
+> {
   /** Currently active steps (global state). */
   private activeSteps = new Set<T>();
   /**
@@ -31,7 +34,7 @@ export class SequenceController<T extends ToString> {
    * Structure:
    * scope -> comboKey -> ComboIndexEntry[]
    */
-  private scopedIndexes = new Map<Scope, ActionIndex<T>>();
+  private scopedIndexes = new Map<Scope, ActionIndex<T, K>>();
   /**
    * Current candidates for sequence progression.
    *
@@ -54,7 +57,7 @@ export class SequenceController<T extends ToString> {
    */
   register(
     sequence: Stage<T> | Stage<T>[],
-    setup: Omit<SequenceAction<T>, "id" | "sequence">,
+    setup: Omit<SequenceAction<T, K>, "id" | "sequence">,
     scope: Scope = "$global",
   ): ActionId {
     const id = crypto.randomUUID();
@@ -65,14 +68,14 @@ export class SequenceController<T extends ToString> {
     if (!normalized[0] || normalized[0].length === 0)
       throw Error("Empty sequence.");
 
-    const action: SequenceAction<T> = {
+    const action: SequenceAction<T, K> = {
       id,
       sequence: normalized,
       ...setup,
     };
 
-    const actionIndex: ActionIndex<T> =
-      this.scopedIndexes.get(scope) ?? (new Map() as ActionIndex<T>);
+    const actionIndex: ActionIndex<T, K> =
+      this.scopedIndexes.get(scope) ?? (new Map() as ActionIndex<T, K>);
 
     normalized.forEach((combo, index) => {
       const key = this.comboKey(combo);
@@ -122,7 +125,7 @@ export class SequenceController<T extends ToString> {
    *
    * @returns Array of [event, handler] tuples to be executed.
    */
-  emitStep(step: Step<T>, scope: Scope = "$global"): Fired<T> {
+  emitStep(step: Step<T>, scope: Scope = "$global"): Fired<T, K> {
     this.cleanupCandidates(scope);
     const firedToNextStep = new Set<string>();
 
@@ -162,7 +165,7 @@ export class SequenceController<T extends ToString> {
       return false;
     });
 
-    const fired: Fired<T> = [];
+    const fired: Fired<T, K> = [];
 
     for (const { action } of emitActions) {
       fired.push([this.buildEvent(action), action.handler]);
@@ -185,12 +188,12 @@ export class SequenceController<T extends ToString> {
   /**
    * Creates event object passed to action handlers.
    */
-  private buildEvent(action: SequenceAction<T>): SequenceEvent<T> {
+  private buildEvent(action: SequenceAction<T, K>): K {
     return {
       sequence: action.sequence,
       activeSteps: new Set(this.activeSteps),
       timestamp: Date.now(),
-    };
+    } as K;
   }
 
   /**

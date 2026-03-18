@@ -1,6 +1,6 @@
 {
   "name": "@hotora/core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A small engine for handling step combos and sequences with scoped actions.",
   "author": "egorkk1211@gmail.com",
   "license": "MIT",

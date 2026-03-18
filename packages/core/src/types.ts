@@ -16,32 +16,38 @@ export type SequenceEvent<T extends ToString> = {
   timestamp: number;
 };
 
-export type Fired<T extends ToString> = [
-  SequenceEvent<T>,
-  SequenceActionHandler<T>,
-][];
+export type Fired<
+  T extends ToString,
+  K extends SequenceEvent<T> = SequenceEvent<T>,
+> = [SequenceEvent<T>, SequenceActionHandler<T, K>][];
 
 export type SequenceActionHandler<
   T extends ToString,
   K extends SequenceEvent<T> = SequenceEvent<T>,
 > = (e: K) => void;
 
-export type SequenceAction<T extends ToString> = {
+export type SequenceAction<
+  T extends ToString,
+  K extends SequenceEvent<T> = SequenceEvent<T>,
+> = {
   id: ActionId;
   sequence: Sequence<T>;
-  handler: SequenceActionHandler<T>;
+  handler: SequenceActionHandler<T, K>;
   clearDuration?: number;
 };
 
-export type ComboIndexEntry<T extends ToString> = {
-  action: SequenceAction<T>;
+export type ComboIndexEntry<
+  T extends ToString,
+  K extends SequenceEvent<T> = SequenceEvent<T>,
+> = {
+  action: SequenceAction<T, K>;
   index: number;
 };
 
-export type ActionIndex<T extends ToString> = Map<
-  ActionId,
-  ComboIndexEntry<T>[]
->;
+export type ActionIndex<
+  T extends ToString,
+  K extends SequenceEvent<T> = SequenceEvent<T>,
+> = Map<ActionId, ComboIndexEntry<T, K>[]>;
 
 export type ActionCandidate = {
   index: number;
