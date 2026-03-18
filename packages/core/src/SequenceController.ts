@@ -32,14 +32,14 @@ export class SequenceController<
    * Index of actions grouped by scope.
    *
    * Structure:
-   * scope -> comboKey -> ComboIndexEntry[]
+   * scope -> actionKey -> ActionIndexEntry[]
    */
   private scopedIndexes = new Map<Scope, ActionIndex<T, K>>();
   /**
    * Current candidates for sequence progression.
    *
    * Stores partial progress of sequences that already matched
-   * one or more combos but haven't finished yet.
+   * one or more stages but haven't finished yet.
    *
    * Structure:
    * scope -> actionId -> candidateState
@@ -49,7 +49,7 @@ export class SequenceController<
   /**
    * Registers a new sequence action.
    *
-   * @param sequence A single combo or an ordered sequence of combos.
+   * @param sequence A single stage or an ordered sequence of stages.
    * @param setup Action configuration (handler, clearDuration, etc.).
    * @param scope Logical context where this action is active.
    *
@@ -77,8 +77,8 @@ export class SequenceController<
     const actionIndex: ActionIndex<T, K> =
       this.scopedIndexes.get(scope) ?? (new Map() as ActionIndex<T, K>);
 
-    normalized.forEach((combo, index) => {
-      const key = this.comboKey(combo);
+    normalized.forEach((stage, index) => {
+      const key = this.stageKey(stage);
       const list = actionIndex.get(key) ?? [];
       list.push({
         action,
@@ -112,26 +112,24 @@ export class SequenceController<
   }
 
   /**
-   * Emits a new step.
+   * Processes the current input state and resolves matching sequences.
    *
-   * This method should be called whenever an input step occurs
-   * (e.g. keydown event).
+   * This method should be called after input steps have been added
+   * (e.g. after handling a keydown event via a separate step function).
    *
-   * It checks whether the current active steps match any
-   * registered combos or progress any sequence.
+   * It checks the accumulated steps against registered stages
+   * and advances active sequences.
    *
-   * @param step Current step
    * @param scope Current execution context
    *
    * @returns Array of [event, handler] tuples to be executed.
    */
-  emitStep(step: Step<T>, scope: Scope = "$global"): Fired<T, K> {
+  process(scope: Scope = "$global"): Fired<T, K> {
     this.cleanupCandidates(scope);
     const firedToNextStep = new Set<string>();
 
     const actionIndex = this.scopedIndexes.get(scope);
     if (!actionIndex) return [];
-    this.activeSteps.add(step);
 
     const key = this.activeKey();
 
@@ -142,20 +140,20 @@ export class SequenceController<
       this.scopedCandidates.get(scope) ?? (new Map() as ActionsCandidates);
 
     const emitActions = actions.filter(({ action, index }) => {
-      const comboIndex = actionsCandidates.get(action.id)?.index ?? 0;
-      const combo = action.sequence[comboIndex];
-      if (!combo || index !== comboIndex || firedToNextStep.has(action.id))
+      const stageIndex = actionsCandidates.get(action.id)?.index ?? 0;
+      const stage = action.sequence[stageIndex];
+      if (!stage || index !== stageIndex || firedToNextStep.has(action.id))
         return false;
       firedToNextStep.add(action.id);
 
-      if (comboIndex === action.sequence.length - 1) {
+      if (stageIndex === action.sequence.length - 1) {
         actionsCandidates.delete(action.id);
         this.scopedCandidates.set(scope, actionsCandidates);
         return true;
       }
 
       actionsCandidates.set(action.id, {
-        index: comboIndex + 1,
+        index: stageIndex + 1,
         timestamp: Date.now(),
         clearDuration: action.clearDuration,
       });
@@ -172,6 +170,17 @@ export class SequenceController<
     }
 
     return fired;
+  }
+
+  /**
+   * Add step to active steps set.
+   *
+   * Should be called when input step start
+   * (e.g. keydown event).
+   * @param step Step to be added
+   */
+  addStep(step: Step<T>) {
+    this.activeSteps.add(step);
   }
 
   /**
@@ -197,12 +206,12 @@ export class SequenceController<
   }
 
   /**
-   * Generates a unique key for a combo.
+   * Generates a unique key for a stage.
    *
-   * Steps are sorted so combo order doesn't matter.
+   * Steps are sorted so stage order doesn't matter.
    */
-  private comboKey(combo: Stage<T>) {
-    const strings = combo.map((step) => step.toString()).sort();
+  private stageKey(stage: Stage<T>) {
+    const strings = stage.map((step) => step.toString()).sort();
     return JSON.stringify(strings);
   }
 

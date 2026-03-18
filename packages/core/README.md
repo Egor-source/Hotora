@@ -6,7 +6,7 @@ Supports:
 
 - step stage (`A + B`)
 - stage sequences (`A+B → C`)
-- scoped actions (same combos in different contexts)
+- scoped actions (same stages in different contexts)
 - sequence timeouts
 
 ---
@@ -14,7 +14,7 @@ Supports:
 ## Install
 
 ```bash
-npm install sequence-controller
+npm install @hotora/core
 ```
 
 ---
@@ -28,8 +28,12 @@ controller.register(["Ctrl", "S"], {
   handler: () => console.log("Save"),
 });
 
-controller.emitStep("Ctrl");
-controller.emitStep("S");
+controller.addStep("Ctrl");
+controller.addStep("S");
+const fired = controller.process();
+for (const [event, handler] of fired) {
+  handler(event);
+}
 ```
 
 ---
@@ -43,7 +47,8 @@ controller.register(["Ctrl", "S"], {
 });
 
 window.addEventListener("keydown", (e) => {
-  const fired = controller.emitStep(e.key);
+  controller.addStep(e.code);
+  const fired = controller.process();
 
   for (const [event, handler] of fired) {
     handler(event);
@@ -51,13 +56,13 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("keyup", (e) => {
-  controller.removeStep(e.key);
+  controller.removeStep(e.code);
 });
 ```
 
 ---
 
-## Combos
+## Stages
 
 ```ts
 controller.register(["Ctrl", "S"], {
@@ -94,8 +99,12 @@ contexts.
 
 ```ts
 controller.register(["Enter"], { handler: submitForm }, "modal");
+controller.addStep("Enter");
+const fired = controller.process("modal");
 
-controller.emitStep("Enter", "modal");
+for (const [event, handler] of fired) {
+  handler(event);
+}
 ```
 
 Default scope:
@@ -136,14 +145,22 @@ register(
 
 ---
 
-### emitStep(step, scope?)
+### addStep(step)
+
+Add step to active steps.
+
+Used for events like `keydown`.
+
+---
+
+### process(scope?)
 
 Processes a step.
 
 Returns actions to execute.
 
 ```ts
-const fired = controller.emitStep(step);
+const fired = controller.process();
 
 for (const [event, handler] of fired) {
   handler(event);

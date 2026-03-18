@@ -36,7 +36,7 @@ export type SequenceAction<
   clearDuration?: number;
 };
 
-export type ComboIndexEntry<
+export type ActionIndexEntry<
   T extends ToString,
   K extends SequenceEvent<T> = SequenceEvent<T>,
 > = {
@@ -47,7 +47,7 @@ export type ComboIndexEntry<
 export type ActionIndex<
   T extends ToString,
   K extends SequenceEvent<T> = SequenceEvent<T>,
-> = Map<ActionId, ComboIndexEntry<T, K>[]>;
+> = Map<ActionId, ActionIndexEntry<T, K>[]>;
 
 export type ActionCandidate = {
   index: number;

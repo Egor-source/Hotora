@@ -16,10 +16,11 @@ describe("SequenceController - clearDuration", () => {
     const handler = jest.fn();
     controller.register([["A"], ["B"]], { handler, clearDuration: 0.1 });
 
-    controller.emitStep("A");
+    controller.addStep("A");
     jest.advanceTimersByTime(150);
 
-    const fired = controller.emitStep("B");
+    controller.addStep("B");
+    const fired = controller.process();
     expect(fired.length).toBe(0);
   });
 });
