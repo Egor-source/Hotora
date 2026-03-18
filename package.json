@@ -1,0 +1,32 @@
+{
+  "name": "hotora",
+  "private": true,
+  "scripts": {
+    "lint:fix": "eslint . --fix",
+    "format:fix": "prettier --write .",
+    "lint": "eslint . && prettier -c .",
+    "fix": "yarn run format:fix && yarn run lint:fix",
+    "test": "yarn workspace @hotora/tests run test",
+    "build": "yarn workspaces foreach -A -p -t run build",
+    "prepare": "husky"
+  },
+  "workspaces": [
+    "packages/**/*"
+  ],
+  "devDependencies": {
+    "@changesets/cli": "^2.30.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.42.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint --fix"
+  }
+}
