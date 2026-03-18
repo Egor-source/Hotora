@@ -1,0 +1,53 @@
+{
+  "name": "@hotora/hotkeys",
+  "version": "1.0.0",
+  "description": "Lightweight JavaScript and TypeScript library for handling keyboard shortcuts, hotkeys, and complex key sequences with customizable scoped actions.",
+  "author": "egorkk1211@gmail.com",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts"
+  },
+  "keywords": [
+    "hotkeys",
+    "keyboard shortcuts",
+    "key combos",
+    "key sequences",
+    "javascript",
+    "typescript",
+    "frontend",
+    "ui",
+    "scoped actions",
+    "keybindings"
+  ],
+  "homepage": "https://github.com/Egor-source/Hotora/tree/main/packages/hotkeys",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Egor-source/Hotora.git",
+    "directory": "packages/hotkeys"
+  },
+  "bugs": {
+    "url": "https://github.com/Egor-source/Hotora/issues"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.1.6"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@hotora/core": "^1.0.0"
+  }
+}

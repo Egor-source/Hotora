@@ -1,0 +1,44 @@
+{
+  "name": "@hotora/core",
+  "version": "1.0.0",
+  "description": "A small engine for handling step combos and sequences with scoped actions.",
+  "author": "egorkk1211@gmail.com",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts"
+  },
+  "keywords": [
+    "sequence",
+    "combo",
+    "hotkeys",
+    "typescript"
+  ],
+  "homepage": "https://github.com/Egor-source/Hotora/tree/main/packages/core",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Egor-source/Hotora.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/Egor-source/Hotora/issues"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.1.6"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
