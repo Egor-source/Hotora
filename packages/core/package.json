@@ -1,6 +1,6 @@
 {
   "name": "@hotora/core",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "A small engine for handling step combos and sequences with scoped actions.",
   "author": "egorkk1211@gmail.com",
   "license": "MIT",
@@ -34,6 +34,7 @@
   },
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/index.mjs"
     }

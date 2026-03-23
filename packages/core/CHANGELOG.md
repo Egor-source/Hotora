@@ -1,5 +1,17 @@
 # @hotora/core
 
+## 2.0.2
+
+### Patch Changes
+
+- Cnahge package.json
+
+## 2.0.1
+
+### Patch Changes
+
+- fix
+
 ## 2.0.0
 
 ### Major Changes
