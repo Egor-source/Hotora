@@ -20,11 +20,43 @@ const defaultProvider = new LazyEventProvider(() =>
   typeof window !== "undefined" ? new DOMEventProvider() : null,
 );
 
+/**
+ * Creates a HotKeys instance using the default provider.
+ * * Ideal for standard browser usage (SSR-safe). By default, it uses
+ * `LazyEventProvider<DOMEventProvider>`.
+ *
+ * @example
+ * import { createHotKeys } from "@hotora/hotkeys";
+ * const hotKeys = createHotKeys();
+ *
+ * @returns {HotKeys<LazyEventProvider<DOMEventProvider>} A new HotKeys instance using the default provider.
+ */
 export function createHotKeys(): HotKeys<typeof defaultProvider>;
+
+/**
+ * Creates a HotKeys instance with a custom event provider.
+ * * Use this to handle events on specific elements or non-DOM environments.
+ * Types for elements and keys will be automatically inferred from the provider.
+ *
+ * @template {EventProvider<InferElement<TProvider>, InferKey<TProvider>>} TProvider
+ * @param {TProvider} provider - A custom EventProvider instance.
+ * @example
+ * import { createHotKeys, EventProvider } from "@hotora/hotkeys";
+ *  class CustomEventProvider implements EventProvider<any, any> {
+ * // interface implementation
+ * }
+ * const provider = new CustomEventProvider();
+ * const hotKeys = createHotKeys(provider);
+ *
+ * @returns {HotKeys<TProvider>} A new HotKeys instance typed according to the provided provider.
+ */
 export function createHotKeys<
   TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
 >(provider: TProvider): HotKeys<TProvider>;
 
+/**
+ * Factory function implementation to create a HotKeys instance.
+ */
 export function createHotKeys(provider?: EventProvider<any, any>) {
   return new HotKeys(provider ?? defaultProvider);
 }

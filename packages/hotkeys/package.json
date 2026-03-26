@@ -1,6 +1,6 @@
 {
   "name": "@hotora/hotkeys",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Lightweight JavaScript and TypeScript library for handling keyboard shortcuts, hotkeys, and complex key sequences with customizable scoped actions.",
   "author": "egorkk1211@gmail.com",
   "license": "MIT",
