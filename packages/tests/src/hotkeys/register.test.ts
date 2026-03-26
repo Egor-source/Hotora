@@ -1,26 +1,21 @@
-/**
- * @jest-environment jsdom
- */
-import "../__mocks__/IntersectionObserver";
-import { Keys, hotKeys } from "@hotora/hotkeys";
+import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
+import { MockEventProvider } from "../__mocks__/MockEventProvider";
 
 describe("HotKeys.register", () => {
-  let button: HTMLElement;
-
+  let test: {};
+  let hotKeys: HotKeys<MockEventProvider>;
+  let provider: MockEventProvider;
   beforeEach(() => {
-    button = document.createElement("button");
-    document.body.appendChild(button);
-  });
-
-  afterEach(() => {
-    document.body.innerHTML = "";
+    provider = new MockEventProvider();
+    hotKeys = createHotKeys(provider);
+    test = { isConnected: true };
   });
 
   it("should register an element with scope", () => {
     const id = hotKeys.register(
       [Keys.A],
       { handler: jest.fn() },
-      button,
+      test,
       "scope1",
     );
     expect(typeof id).toBe("string");
@@ -35,7 +30,7 @@ describe("HotKeys.register", () => {
     const id = hotKeys.register(
       [Keys.A],
       { handler: jest.fn() },
-      button,
+      test,
       "scope1",
     );
     hotKeys.unregister(id);

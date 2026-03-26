@@ -1,42 +1,44 @@
-/**
- * @jest-environment jsdom
- */
-import "../__mocks__/IntersectionObserver";
-import { fireEvent } from "@testing-library/dom";
-import { Keys, hotKeys } from "@hotora/hotkeys";
+import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
+import { MockEventProvider } from "../__mocks__/MockEventProvider";
 
 describe("HotKeys keyboard events", () => {
-  let button: HTMLElement;
+  let hotKeys: HotKeys<MockEventProvider>;
+  let provider: MockEventProvider;
 
   beforeEach(() => {
-    button = document.createElement("button");
-    document.body.appendChild(button);
-    (hotKeys as any).visibleElements.add(button);
+    provider = new MockEventProvider();
+    hotKeys = createHotKeys(provider);
   });
 
   it("should call handler on keydown", () => {
+    let test = { isConnected: true };
     const handler = jest.fn();
-    hotKeys.register([Keys.A], { handler }, button, "scope1");
+    hotKeys.register([Keys.A], { handler }, test, "scope1");
+    provider.emitObserve([{ target: test, isIntersecting: true }]);
 
-    fireEvent.keyDown(document, { code: "KeyA" });
+    provider.emitKeyDown(Keys.A);
+
     expect(handler).toHaveBeenCalled();
   });
 
   it("should stop propagation", () => {
     const h1 = jest.fn(({ stopPropagation }) => stopPropagation());
     const h2 = jest.fn();
-    const parent = document.createElement("div");
-    const child = document.createElement("div");
-    parent.appendChild(child);
-    document.body.appendChild(parent);
+    const parent = { isConnected: true };
+
+    const child = {
+      isConnected: true,
+      parentElement: parent,
+    };
 
     hotKeys.register([Keys.A], { handler: h1 }, child, "s2");
     hotKeys.register([Keys.A], { handler: h2 }, parent, "s1");
 
-    (hotKeys as any).visibleElements.add(parent);
-    (hotKeys as any).visibleElements.add(child);
-
-    fireEvent.keyDown(document, { code: "KeyA" });
+    provider.emitObserve([
+      { target: parent, isIntersecting: true },
+      { target: child, isIntersecting: true },
+    ]);
+    provider.emitKeyDown(Keys.A);
 
     expect(h1).toHaveBeenCalled();
     expect(h2).not.toHaveBeenCalled();
@@ -47,8 +49,9 @@ describe("HotKeys keyboard events", () => {
       (hotKeys as any).sequenceController,
       "removeStep",
     );
-    fireEvent.keyDown(document, { code: "KeyA" });
-    fireEvent.keyUp(document, { code: "KeyA" });
+    provider.emitKeyDown(Keys.A);
+    provider.emitKeyUp(Keys.A);
+
     expect(removeStepSpy).toHaveBeenCalledWith("KeyA");
   });
 });

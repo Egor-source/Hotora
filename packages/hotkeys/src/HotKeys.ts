@@ -1,102 +1,161 @@
 import { SequenceController } from "@hotora/core";
 import type { ActionId, Fired, SequenceAction, Stage } from "@hotora/core";
 
-import type { HotkeysEvent, Keys } from "./types";
+import type {
+  Entry,
+  EventProvider,
+  HotkeysEvent,
+  InferElement,
+  InferKey,
+} from "./types";
+import { DOMEventProvider } from "./eventProviders/DOMEventProvider";
+import { LazyEventProvider } from "./eventProviders/LazyEventProvider";
 
 /**
- * HotKeys manager that supports:
- * - key combinations and sequences (via SequenceController)
- * - scoped handlers (scopes)
- * - binding to DOM elements
- *
- * Features:
- * - processes only visible elements (via IntersectionObserver)
- * - resolves "active" element based on:
- *   - last pointer interaction (mouse/touch)
- *   - DOM depth (if multiple elements are visible)
- * - builds scope chain (from element up to root + $global fallback)
- * - allows stopping propagation between scopes
+ * Default EventProvider instance.
+ * Created only in browser environments (`window` exists).
+ * In non-browser environments, it will be `null` and a provider must be supplied manually.
  */
-class HotKeys {
-  /** Internal controller for key sequences */
-  private sequenceController = new SequenceController<Keys, HotkeysEvent>();
+const defaultProvider = new LazyEventProvider(() =>
+  typeof window !== "undefined" ? new DOMEventProvider() : null,
+);
+
+export function createHotKeys(): HotKeys<typeof defaultProvider>;
+export function createHotKeys<
+  TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
+>(provider: TProvider): HotKeys<TProvider>;
+
+export function createHotKeys(provider?: EventProvider<any, any>) {
+  return new HotKeys(provider ?? defaultProvider);
+}
+
+/**
+ * HotKeys manager
+ *
+ * Handles keyboard shortcuts and sequences with full DOM integration.
+ * Supports both browser and non-browser environments via EventProvider.
+ *
+ * Key features:
+ * - Supports key **combinations** and **ordered sequences** (via SequenceController)
+ * - **Scoped handlers**: hotkeys can be bound to specific DOM elements or named scopes
+ * - **Element visibility tracking**: only visible elements are considered active
+ * - **Active element resolution**:
+ *    - last pointer interaction (mouse/touch)
+ *    - DOM depth if multiple elements are visible
+ * - **Scope chain building**: walks from element to root + global fallback
+ * - **Propagation control**: handlers can stop propagation between scopes
+ * - **Custom EventProvider** support for non-browser environments
+ * - Automatic cleanup of disconnected DOM elements
+ *
+ * Environment notes:
+ * - Safe for SSR use LazyProvider
+ *
+ * @internal
+ * Prefer using `createHotKeys()` instead.
+ */
+export class HotKeys<
+  TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
+> {
+  /** Internal controller managing key sequences and combination state */
+  private sequenceController = new SequenceController<
+    InferKey<TProvider>,
+    HotkeysEvent<InferKey<TProvider>>
+  >();
 
   /**
-   * Maps DOM elements to their scope
-   * WeakMap is used to avoid memory leaks
+   * Maps DOM elements to their scope names.
+   * WeakMap is used to avoid memory leaks when elements are removed.
    */
-  private elements = new WeakMap<HTMLElement, string>();
+  private elements = new WeakMap<InferElement<TProvider>, string>();
 
-  /** Set of currently visible elements (tracked by IntersectionObserver) */
-  private visibleElements = new Set<HTMLElement>();
+  /** Set of currently visible elements, tracked via IntersectionObserver */
+  private visibleElements = new Set<InferElement<TProvider>>();
 
   /** Last active element determined by pointer interaction */
-  private activeElement: HTMLElement | null = null;
+  private activeElement: InferElement<TProvider> | null = null;
+
+  /** AbortController used to clean up all event subscriptions */
+  private abortController = new AbortController();
 
   /**
-   * Observer that tracks element visibility
-   * Adds/removes elements from visibleElements
+   * Initializes the HotKeys manager.
+   *
+   * @param provider - Optional custom EventProvider.
+   *                   Defaults to DOMEventProvider in browser.
+   * @throws If no provider is available (non-browser environment without provider)
    */
-  private observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      const el = entry.target as HTMLElement;
-
-      if (entry.isIntersecting) {
-        this.visibleElements.add(el);
-      } else {
-        this.visibleElements.delete(el);
-      }
-    }
-    this.cleanup();
-  });
-
-  /** Subscribes to global keyboard and pointer events */
-  constructor() {
-    document.addEventListener("keydown", this.onKeyDown.bind(this));
-    document.addEventListener("keyup", this.onKeyUp.bind(this));
-    document.addEventListener("mousedown", this.onPointer.bind(this));
-    document.addEventListener("touchstart", this.onPointer.bind(this));
+  constructor(private provider: TProvider) {
+    this.provider.onKeyDown(
+      this.onKeyDown.bind(this),
+      this.abortController.signal,
+    );
+    this.provider.onKeyUp(this.onKeyUp.bind(this), this.abortController.signal);
+    this.provider.onPointer(
+      this.onPointer.bind(this),
+      this.abortController.signal,
+    );
   }
 
   /**
-   * Registers a hotkey or key sequence
+   * Registers a hotkey or key sequence.
    *
-   * @param sequence - key combination or sequence
+   * @param sequence - key combination or ordered sequence
    * @param setup - handler configuration (without id and sequence)
-   * @param element - optional DOM element to bind scope to
-   * @param scope - optional scope name
-   *
+   * @param element - optional element to bind scope to
+   * @param scope - optional scope name; if element provided, scope is recommended
    * @returns action identifier
    */
   register(
-    sequence: Stage<Keys> | Stage<Keys>[],
-    setup: Omit<SequenceAction<Keys, HotkeysEvent>, "id" | "sequence">,
-    element?: HTMLElement,
+    sequence: Stage<InferKey<TProvider>> | Stage<InferKey<TProvider>>[],
+    setup: Omit<
+      SequenceAction<InferKey<TProvider>, HotkeysEvent<InferKey<TProvider>>>,
+      "id" | "sequence"
+    >,
+    element?: InferElement<TProvider>,
     scope?: string,
   ): ActionId {
     if (element && scope) {
       this.elements.set(element, scope);
-      this.observer.observe(element);
+      this.provider.observe(
+        element,
+        this.changeVisibility.bind(this),
+        this.abortController.signal,
+      );
     }
 
     return this.sequenceController.register(sequence, setup, scope);
   }
 
   /**
-   * Unregisters a previously registered hotkey
+   * Unregisters a previously registered hotkey by its action id.
    *
-   * @param id - action identifier
+   * @param id - identifier returned from `register`
    */
   unregister(id: ActionId) {
     this.sequenceController.unregister(id);
   }
 
   /**
-   * Pointer event handler
-   * Stores the closest registered element as active
+   * Observer callback to track element visibility.
+   *
+   * Updates the `visibleElements` set and cleans up disconnected elements.
    */
-  private onPointer = (e: Event) => {
-    const target = e.target as HTMLElement;
+  private changeVisibility(entries: Entry<InferElement<TProvider>>[]) {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        this.visibleElements.add(entry.target);
+      } else {
+        this.visibleElements.delete(entry.target);
+      }
+    });
+    this.cleanup();
+  }
+
+  /**
+   * Pointer event handler.
+   * Sets the closest registered element as the active element.
+   */
+  private onPointer = (target: InferElement<TProvider>) => {
     const el = this.findClosestRegistered(target);
 
     if (el) {
@@ -105,28 +164,28 @@ class HotKeys {
   };
 
   /**
-   * Key down handler
-   * - adds step to sequence
-   * - resolves active element
-   * - walks through scope chain
-   * - executes matched handlers
+   * Key down handler.
+   * - Adds the key to the current sequence
+   * - Resolves active element
+   * - Walks through the scope chain
+   * - Executes all matching handlers
+   * - Allows stopping propagation between scopes
    */
-  private onKeyDown = (event: KeyboardEvent) => {
-    if (event.repeat) return;
-
-    const step = event.code as Keys;
+  private onKeyDown = (key: InferKey<TProvider>) => {
     const activeEl = this.resolveActiveElement();
     const scopes = this.getScopeChain(activeEl);
 
-    this.sequenceController.addStep(step);
+    this.sequenceController.addStep(key);
 
     let stopPropagation = false;
 
     for (const scope of scopes) {
       if (stopPropagation) break;
 
-      const fired: Fired<Keys, HotkeysEvent> =
-        this.sequenceController.process(scope);
+      const fired: Fired<
+        InferKey<TProvider>,
+        HotkeysEvent<InferKey<TProvider>>
+      > = this.sequenceController.process(scope);
 
       fired.forEach(([evt, handler]) => {
         handler({
@@ -134,30 +193,31 @@ class HotKeys {
             stopPropagation = true;
           },
           ...evt,
-        } as HotkeysEvent);
+        } as HotkeysEvent<InferKey<TProvider>>);
       });
     }
   };
 
   /**
-   * Key up handler
-   * Removes step from current sequence state
+   * Key up handler.
+   * Removes the key from the current sequence state.
    */
-  private onKeyUp = (event: KeyboardEvent) => {
-    const step = event.code as Keys;
-    this.sequenceController.removeStep(step);
+  private onKeyUp = (key: InferKey<TProvider>) => {
+    this.sequenceController.removeStep(key);
   };
 
   /**
-   * Resolves the currently active element
+   * Resolves the currently active element.
    *
    * Priority:
    * 1. Only visible elements are considered
    * 2. If one element → return it
-   * 3. If activeElement is still visible → return it
+   * 3. If `activeElement` is still visible → return it
    * 4. Otherwise → return the deepest element in DOM
+   *
+   * @returns active element or null if none
    */
-  private resolveActiveElement(): HTMLElement | null {
+  private resolveActiveElement(): InferElement<TProvider> | null {
     const visible = [...this.visibleElements];
 
     if (visible.length === 0) return null;
@@ -173,17 +233,17 @@ class HotKeys {
   }
 
   /**
-   * Builds scope chain from element to root
-   * Always includes "$global" as fallback
+   * Builds the scope chain for an element.
+   * Walks from element up to root and always includes "$global" as fallback.
    */
-  private getScopeChain(element: HTMLElement | null): string[] {
+  private getScopeChain(element: InferElement<TProvider> | null): string[] {
     const chain: string[] = [];
-    let current: HTMLElement | null = element;
+    let current: InferElement<TProvider> | null = element;
 
     while (current) {
       const scope = this.elements.get(current);
       if (scope) chain.push(scope);
-      current = current.parentElement;
+      current = this.provider.getParentElement(current);
     }
 
     if (!chain.includes("$global")) {
@@ -194,42 +254,53 @@ class HotKeys {
   }
 
   /**
-   * Finds the closest ancestor element that has a registered scope
+   * Finds the closest ancestor element with a registered scope.
+   *
+   * @param el - starting element
+   * @returns closest registered element or null
    */
-  private findClosestRegistered(el: HTMLElement | null): HTMLElement | null {
+  private findClosestRegistered(
+    el: InferElement<TProvider> | null,
+  ): InferElement<TProvider> | null {
     let current = el;
 
     while (current) {
       if (this.elements.has(current)) return current;
-      current = current.parentElement;
+      current = this.provider.getParentElement(current);
     }
 
     return null;
   }
 
   /**
-   * Calculates DOM depth of an element
+   * Calculates the DOM depth of an element.
+   * Used to resolve the deepest visible element when multiple are present.
+   *
+   * @param el - element to measure
+   * @returns depth (root = 1)
    */
-  private getDepth(el: HTMLElement): number {
+  private getDepth(el: InferElement<TProvider>): number {
     let depth = 0;
-    let current: HTMLElement | null = el;
+    let current: InferElement<TProvider> | null = el;
 
     while (current) {
       depth++;
-      current = current.parentElement;
+      current = this.provider.getParentElement(current);
     }
 
     return depth;
   }
 
   /**
-   * Cleans up elements that are no longer in the DOM
+   * Cleans up elements that are disposed.
+   * Removes them from `visibleElements` and unobserves them.
+   * Resets `activeElement` if it was removed.
    */
   private cleanup() {
     for (const el of [...this.visibleElements]) {
-      if (!el.isConnected) {
+      if (!this.provider.getIsElementConnected(el)) {
         this.visibleElements.delete(el);
-        this.observer.unobserve(el);
+        this.provider.unobserve(el);
 
         if (this.activeElement === el) {
           this.activeElement = null;
@@ -237,6 +308,20 @@ class HotKeys {
       }
     }
   }
-}
 
-export const hotKeys = new HotKeys();
+  /**
+   * Destroys the HotKeys instance.
+   * Aborts all subscriptions and cleans up internal state.
+   */
+  destroy() {
+    this.abortController.abort();
+  }
+
+  /**
+   * Symbol-based disposal for convenience.
+   * Calls `destroy`.
+   */
+  [Symbol.dispose]() {
+    this.destroy();
+  }
+}

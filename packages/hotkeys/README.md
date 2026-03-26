@@ -1,15 +1,16 @@
 # HotKeys
 
-Lightweight hotkey manager with support for key sequences, scoped handlers, and DOM-based context resolution.
+Lightweight hotkey manager with support for key sequences, scoped handlers, and pluggable event providers.
 
 ## Features
 
 - Key combinations and sequences
 - Scoped handlers (local + global)
-- DOM element binding
-- Visibility-aware (via `IntersectionObserver`)
+- Element binding
+- Visibility-aware
 - Smart active element resolution
 - Scope propagation control (`stopPropagation`)
+- Pluggable event providers (DOM, SSR-safe, custom)
 
 ---
 
@@ -23,8 +24,12 @@ npm install @hotora/hotkeys
 
 ## Basic Usage
 
+### Default (browser)
+
 ```ts
-import { hotKeys, Keys } from "@hotora/hotkeys";
+import { createHotKeys, Keys } from "@hotora/hotkeys";
+
+const hotKeys = createHotKeys();
 
 hotKeys.register([Keys.A], {
   handler: () => {
@@ -33,11 +38,14 @@ hotKeys.register([Keys.A], {
 });
 ```
 
+For correct operation, it is best to use 1 HotKeys instance at a time.
+Otherwise stopPropagation may not work.
+
 ---
 
 ## Key Combinations
 
-You can register multi-step combination:
+Register multi-key combinations:
 
 ```ts
 hotKeys.register([Keys.ControlLeft, Keys.A], {
@@ -47,13 +55,13 @@ hotKeys.register([Keys.ControlLeft, Keys.A], {
 });
 ```
 
-The handler will only work after you press Ctrl and the A key together.
+The handler fires when all keys are pressed simultaneously.
 
 ---
 
 ## Key Sequences
 
-You can register multi-step sequences:
+Register ordered sequences:
 
 ```ts
 hotKeys.register([[Keys.ControlLeft], [Keys.A]], {
@@ -63,13 +71,13 @@ hotKeys.register([[Keys.ControlLeft], [Keys.A]], {
 });
 ```
 
-The handler only works after pressing Ctrl and then the A key.
+The handler fires only when keys are pressed in order.
 
 ---
 
 ## Scoped Hotkeys
 
-Bind hotkeys to a specific DOM element and scope:
+Bind hotkeys to an element and scope:
 
 ```ts
 const element = document.getElementById("editor");
@@ -84,23 +92,24 @@ hotKeys.register(
 );
 ```
 
+---
+
 ### How scopes work
 
-- Scope is attached to a DOM element
-- When a key is pressed, HotKeys:
-  1. Resolves active element
-  2. Builds scope chain (element → parents → `$global`)
-  3. Executes handlers in order
+1. Scope is attached to an element
+2. On key press:
+
+- active element is resolved
+- scope chain is built (element → parents → `$global`)
+- handlers execute in order
 
 ---
 
 ## Global Scope
 
-All handlers fallback to `$global` if no scoped handler stops propagation.
+All handlers fallback to `$global`:
 
 ```ts
-import { Keys } from "@hotora/hotkeys/dist";
-
 hotKeys.register([Keys.Escape], {
   handler: () => console.log("Global escape"),
 });
@@ -110,7 +119,7 @@ hotKeys.register([Keys.Escape], {
 
 ## stopPropagation
 
-Prevent execution of handlers in parent scopes:
+Prevent execution in parent scopes:
 
 ```ts
 hotKeys.register([Keys.S], {
@@ -128,47 +137,178 @@ hotKeys.register([Keys.S], {
 HotKeys determines active element using:
 
 1. Last pointer interaction (click/touch)
-2. Only visible elements are considered
-3. If multiple visible elements:
+2. Only visible elements
+3. If multiple:
 
 - prefers last active
-- otherwise chooses deepest in DOM
+- otherwise deepest in DOM
 
 ---
 
+## Providers
+
+HotKeys is provider-based.  
+Event handling is abstracted via `EventProvider`.
+
+### DOMEventProvider (used by default)
+
+Uses real DOM APIs:
+
+- `keydown` / `keyup`
+- `mousedown` / `touchstart`
+- `IntersectionObserver`
+
+```ts
+import { createHotKeys, DOMEventProvider } from "@hotora/hotkeys";
+
+const hotKeys = createHotKeys(new DOMEventProvider());
+```
+
+---
+
+### LazyEventProvider (SSR / async)
+
+Safe for SSR and dynamic environments.
+
+- Buffers subscriptions
+- Initializes provider lazily
+- Supports async factory
+
+```ts
+import {
+  LazyEventProvider,
+  DOMEventProvider,
+  createHotKeys,
+} from "@hotora/hotkeys";
+
+const provider = new LazyEventProvider(() => {
+  if (typeof window !== "undefined") {
+    return new DOMEventProvider();
+  }
+  return null;
+});
+
+const hotKeys = createHotKeys(provider);
+```
+
+---
+
+### Custom providers
+
+You can implement your own provider (e.g. canvas, WebGL, game engine):
+
+```ts
+import type { EventProvider } from "@hotora/hotkeys";
+
+class MyProvider implements EventProvider<any, any> {
+  // implement interface
+}
+```
+
+---
+
+## EventProvider Interface
+
+Custom providers implement `EventProvider<TElement, TKey>` to handle events in different environments:
+
+```ts
+interface EventProvider<TElement, TKey> {
+  onKeyDown(handler: (key: TKey) => void, signal: AbortSignal): void;
+  onKeyUp(handler: (key: TKey) => void, signal: AbortSignal): void;
+  onPointer(handler: (target: TElement) => void, signal: AbortSignal): void;
+  observe(
+    element: TElement,
+    callback: (entries: Entry<TElement>[]) => void,
+    signal: AbortSignal,
+  ): void;
+  unobserve(element: TElement): void;
+  getParentElement(element: TElement): TElement | null;
+  getIsElementConnected(element: TElement): boolean;
+}
+```
+
+- Allows HotKeys to work with browser DOM, SSR, or test environments
+- Supports lazy initialization for SSR or deferred providers
+- Handlers are automatically queued until the provider is ready
+
 ## API
 
-### `register(sequence, setup, element?, scope?)`
+### Hotkeys
+
+#### `createHotKeys(provider?)`
+
+Creates a new instance with a specific EventProvider.
+
+```ts
+const hotKeys = createHotKeys(provider);
+```
+
+---
+
+#### `register(sequence, setup, element?, scope?)`
 
 Registers a hotkey or sequence.
 
 ```ts
 register(
-  Combo | Sequence,
+  Combo | ComboSequence,
   {
-    handler: (event) => void
-    clearDuration?: number
+    handler: (event) => void;
+    clearDuration?: number;
   },
-  element: HTMLElement,
+  element?: HTMLElement,
   scope?: string
 ): ActionId
 ```
 
 ---
 
-### `unregister(id)`
+#### `unregister(id)`
 
 Removes a previously registered hotkey.
 
 ---
 
-## Event
+#### `destroy()`
+
+Cleans up all subscriptions.
+
+---
+
+### LazyEventProvider
+
+#### new LazyEventProvider(providerFactory)
+
+Creates new instance with a provider factory
+
+```ts
+const factory = () => {
+  import("./CustomEventProvider").then((m) => new m.CustomEventProvider());
+};
+const provider = new LazyEventProvider(factory);
+```
+
+---
+
+#### isReady: boolean
+
+Indicates whether the provider has already been initialized or not.
+
+---
+
+#### reinitialize()
+
+Restarts the provider initialization.
+
+---
+
+## Event Object
 
 Handler receives:
 
 ```ts
 {
-  stopPropagation: ()=> void;
+  stopPropagation: () => void;
   sequence: Sequence;
   activeSteps: Set;
   timestamp: number;
@@ -177,10 +317,24 @@ Handler receives:
 
 ---
 
+## SSR Notes
+
+- `DOMEventProvider` is **not SSR-safe**
+- Use `LazyEventProvider` for:
+  - SSR frameworks (Next.js, Nuxt)
+  - dynamic imports
+  - delayed initialization
+
+---
+
 ## Example
 
 ```ts
+import { createHotKeys } from "@hotora/hotkeys";
+
 const modal = document.getElementById("modal");
+
+const hotKeys = createHotKeys();
 
 hotKeys.register(
   [Keys.Escape],

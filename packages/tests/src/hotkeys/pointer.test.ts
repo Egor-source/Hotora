@@ -1,26 +1,19 @@
-/**
- * @jest-environment jsdom
- */
-import "../__mocks__/IntersectionObserver";
-import { fireEvent } from "@testing-library/dom";
-import { hotKeys, Keys } from "@hotora/hotkeys";
+import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
+import { MockEventProvider } from "../__mocks__/MockEventProvider";
 
 describe("HotKeys pointer events", () => {
-  let div: HTMLElement;
-
+  let test: {};
+  let hotKeys: HotKeys<MockEventProvider>;
+  let provider: MockEventProvider;
   beforeEach(() => {
-    div = document.createElement("div");
-    document.body.appendChild(div);
-    hotKeys.register([Keys.A], { handler: jest.fn() }, div, "scope");
+    provider = new MockEventProvider();
+    hotKeys = createHotKeys(provider);
+    test = { isConnected: true };
+    hotKeys.register([Keys.A], { handler: jest.fn() }, test, "scope");
   });
 
-  it("should set active element on mousedown", () => {
-    fireEvent.mouseDown(div);
-    expect((hotKeys as any).activeElement).toBe(div);
-  });
-
-  it("should set active element on touchstart", () => {
-    fireEvent.touchStart(div);
-    expect((hotKeys as any).activeElement).toBe(div);
+  it("should set active element on emit pointer", () => {
+    provider.emitPointer(test);
+    expect((hotKeys as any).activeElement).toBe(test);
   });
 });
