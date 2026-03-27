@@ -3,7 +3,8 @@ name: CI & Publish
 on:
   push:
     branches:
-      - main
+      tags:
+        - '@hotora/*@*'
 
 env:
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
