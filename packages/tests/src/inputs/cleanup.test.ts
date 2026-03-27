@@ -1,26 +1,26 @@
-import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
 import { MockEventProvider } from "../__mocks__/MockEventProvider";
+import { createInputsManager, InputsManager, Keys } from "@hotora/inputs";
 
-describe("HotKeys cleanup with MockEventProvider", () => {
-  let hotKeys: HotKeys<MockEventProvider>;
+describe("InputsManager cleanup with MockEventProvider", () => {
+  let manager: InputsManager<MockEventProvider>;
   let provider: MockEventProvider;
   let test;
 
   beforeEach(() => {
     provider = new MockEventProvider();
-    hotKeys = createHotKeys(provider);
+    manager = createInputsManager(provider);
     test = { isConnected: true };
-    hotKeys.register([Keys.A], { handler: jest.fn() }, test, "scope");
+    manager.register([Keys.A], { handler: jest.fn() }, test, "scope");
     provider.emitObserve([{ target: test, isIntersecting: true }]);
     provider.emitPointer(test);
   });
 
   it("should remove disconnected elements", () => {
     test.isConnected = false;
-    const cleanup = jest.spyOn(hotKeys, "cleanup");
+    const cleanup = jest.spyOn(manager, "cleanup");
     provider.emitObserve([]);
     expect(cleanup).toHaveBeenCalledTimes(1);
-    expect((hotKeys as any).visibleElements.has(test)).toBe(false);
-    expect((hotKeys as any).activeElement).toBe(null);
+    expect((manager as any).visibleElements.has(test)).toBe(false);
+    expect((manager as any).activeElement).toBe(null);
   });
 });

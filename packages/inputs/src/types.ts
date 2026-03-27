@@ -116,9 +116,9 @@ export enum Keys {
   Slash = "Slash",
 }
 
-export interface HotkeysEvent<
-  TKey extends ToString,
-> extends SequenceEvent<TKey> {
+export interface InputsEvent<
+  TStep extends ToString,
+> extends SequenceEvent<TStep> {
   stopPropagation: () => void;
 }
 
@@ -127,7 +127,7 @@ export interface Entry<TElement extends WeakKey> {
   isIntersecting: boolean;
 }
 
-export type KeyHandler<TKey extends ToString> = (key: TKey) => void;
+export type InputHandler<TStep extends ToString> = (step: TStep) => void;
 export type PointerHandler<TElement extends WeakKey> = (
   element: TElement,
 ) => void;
@@ -136,7 +136,7 @@ export type ObserveHandler<TElement extends WeakKey> = (
 ) => void;
 export interface EventProvider<
   TElement extends WeakKey,
-  TKey extends ToString,
+  TStep extends ToString,
 > {
   observe: (
     element: TElement,
@@ -144,12 +144,12 @@ export interface EventProvider<
     signal: AbortSignal,
   ) => void;
   unobserve: (element: TElement) => void;
-  onKeyDown: (handler: KeyHandler<TKey>, signal: AbortSignal) => void;
-  onKeyUp: (handler: KeyHandler<TKey>, signal: AbortSignal) => void;
+  onInputStart: (handler: InputHandler<TStep>, signal: AbortSignal) => void;
+  onInputEnd: (handler: InputHandler<TStep>, signal: AbortSignal) => void;
   onPointer: (handler: PointerHandler<TElement>, signal: AbortSignal) => void;
   getParentElement: (element: TElement) => TElement | null;
   getIsElementConnected: (element: TElement) => boolean;
 }
 
 export type InferElement<T> = T extends EventProvider<infer E, any> ? E : never;
-export type InferKey<T> = T extends EventProvider<any, infer K> ? K : never;
+export type InferStep<T> = T extends EventProvider<any, infer K> ? K : never;

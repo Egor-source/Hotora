@@ -1,18 +1,18 @@
-import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
 import { MockEventProvider } from "../__mocks__/MockEventProvider";
+import { createInputsManager, InputsManager, Keys } from "@hotora/inputs";
 
-describe("HotKeys.register", () => {
+describe("InputsManager.register", () => {
   let test: {};
-  let hotKeys: HotKeys<MockEventProvider>;
+  let manager: InputsManager<MockEventProvider>;
   let provider: MockEventProvider;
   beforeEach(() => {
     provider = new MockEventProvider();
-    hotKeys = createHotKeys(provider);
+    manager = createInputsManager(provider);
     test = { isConnected: true };
   });
 
   it("should register an element with scope", () => {
-    const id = hotKeys.register(
+    const id = manager.register(
       [Keys.A],
       { handler: jest.fn() },
       test,
@@ -22,20 +22,20 @@ describe("HotKeys.register", () => {
   });
 
   it("should register without element or scope", () => {
-    const id = hotKeys.register([Keys.A], { handler: jest.fn() });
+    const id = manager.register([Keys.A], { handler: jest.fn() });
     expect(typeof id).toBe("string");
   });
 
   it("should allow unregistering", () => {
-    const id = hotKeys.register(
+    const id = manager.register(
       [Keys.A],
       { handler: jest.fn() },
       test,
       "scope1",
     );
-    hotKeys.unregister(id);
+    manager.unregister(id);
     expect(
-      (hotKeys as any).sequenceController.scopedIndexes.get("scope1").has(id),
+      (manager as any).sequenceController.scopedIndexes.get("scope1").has(id),
     ).toBe(false);
   });
 });

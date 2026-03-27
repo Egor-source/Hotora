@@ -1,24 +1,24 @@
-import { Keys, LazyEventProvider } from "@hotora/hotkeys";
 import { MockEventProvider } from "../../__mocks__/MockEventProvider";
+import { Keys, LazyEventProvider } from "@hotora/inputs";
 
 describe("LazyEventProvider", () => {
   test("buffers handlers and replays after init (sync provider)", async () => {
     const mock = new MockEventProvider();
     const provider = new LazyEventProvider(() => mock);
 
-    const keyDown = jest.fn();
-    const keyUp = jest.fn();
+    const inputStart = jest.fn();
+    const inputEnd = jest.fn();
 
     const abort = new AbortController();
 
-    provider.onKeyDown(keyDown, abort.signal);
-    provider.onKeyUp(keyUp, abort.signal);
+    provider.onInputStart(inputStart, abort.signal);
+    provider.onInputEnd(inputEnd, abort.signal);
 
-    mock.emitKeyDown(Keys.A);
-    mock.emitKeyUp(Keys.A);
+    mock.emitInputStart(Keys.A);
+    mock.emitInputEnd(Keys.A);
 
-    expect(keyDown).toHaveBeenCalledWith(Keys.A);
-    expect(keyUp).toHaveBeenCalledWith(Keys.A);
+    expect(inputStart).toHaveBeenCalledWith(Keys.A);
+    expect(inputEnd).toHaveBeenCalledWith(Keys.A);
   });
 
   test("works with async factory", async () => {
@@ -29,11 +29,11 @@ describe("LazyEventProvider", () => {
     const handler = jest.fn();
     const abort = new AbortController();
 
-    provider.onKeyDown(handler, abort.signal);
+    provider.onInputStart(handler, abort.signal);
 
     await Promise.resolve();
 
-    mock.emitKeyDown(Keys.A);
+    mock.emitInputStart(Keys.A);
 
     expect(handler).toHaveBeenCalled();
   });
@@ -81,11 +81,11 @@ describe("LazyEventProvider", () => {
     const handler = jest.fn();
     const abort = new AbortController();
 
-    provider.onKeyDown(handler, abort.signal);
+    provider.onInputStart(handler, abort.signal);
 
     abort.abort();
 
-    mock.emitKeyDown(Keys.A);
+    mock.emitInputStart(Keys.A);
 
     expect(handler).not.toHaveBeenCalled();
   });
@@ -95,7 +95,7 @@ describe("LazyEventProvider", () => {
 
     const abort = new AbortController();
 
-    provider.onKeyDown(() => {}, abort.signal);
+    provider.onInputStart(() => {}, abort.signal);
 
     expect(() => provider.getParentElement({})).toThrow(
       "Provider initialized but not available",
@@ -127,7 +127,7 @@ describe("LazyEventProvider", () => {
 
     const element = {};
 
-    provider.onKeyDown(() => {}, abort.signal);
+    provider.onInputStart(() => {}, abort.signal);
 
     provider.observe(element, callback, abort.signal);
 

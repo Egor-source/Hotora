@@ -1,30 +1,31 @@
 import type {
+  Entry,
   EventProvider,
-  KeyHandler,
-  Keys,
+  InputHandler,
   ObserveHandler,
   PointerHandler,
-  Entry,
-} from "@hotora/hotkeys";
-import { Keys } from "@hotora/hotkeys";
+} from "@hotora/inputs";
+import { Keys } from "@hotora/inputs";
 
 export class MockEventProvider implements EventProvider<{}, Keys> {
-  private keyDownHandlers = new Set<KeyHandler<Keys>>();
-  private keyUpHandlers = new Set<KeyHandler<Keys>>();
+  private inputStartHandlers = new Set<InputHandler<Keys>>();
+  private inputEndHandlers = new Set<InputHandler<Keys>>();
   private pointerHandlers = new Set<PointerHandler<{}>>();
   private observeHandlers = new Set<ObserveHandler<{}>>();
   private elementsObserveHandlers = new Map<{}, ObserveHandler<{}>>();
 
-  onKeyDown(handler: KeyHandler<Keys>, signal: AbortSignal) {
-    this.keyDownHandlers.add(handler);
+  onInputStart(handler: InputHandler<Keys>, signal: AbortSignal) {
+    this.inputStartHandlers.add(handler);
     signal?.addEventListener("abort", () =>
-      this.keyDownHandlers.delete(handler),
+      this.inputStartHandlers.delete(handler),
     );
   }
 
-  onKeyUp(handler: KeyHandler<Keys>, signal: AbortSignal) {
-    this.keyUpHandlers.add(handler);
-    signal?.addEventListener("abort", () => this.keyUpHandlers.delete(handler));
+  onInputEnd(handler: InputHandler<Keys>, signal: AbortSignal) {
+    this.inputEndHandlers.add(handler);
+    signal?.addEventListener("abort", () =>
+      this.inputEndHandlers.delete(handler),
+    );
   }
 
   onPointer(handler: PointerHandler<unknown>, signal: AbortSignal) {
@@ -51,12 +52,12 @@ export class MockEventProvider implements EventProvider<{}, Keys> {
     }
   }
 
-  emitKeyDown(code: Keys) {
-    for (const handler of this.keyDownHandlers) handler(code);
+  emitInputStart(code: Keys) {
+    for (const handler of this.inputStartHandlers) handler(code);
   }
 
-  emitKeyUp(code: Keys) {
-    for (const handler of this.keyUpHandlers) handler(code);
+  emitInputEnd(code: Keys) {
+    for (const handler of this.inputEndHandlers) handler(code);
   }
 
   emitPointer(target: unknown) {

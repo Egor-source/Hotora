@@ -6,8 +6,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@hotora/core": "^2.0.2",
-    "@hotora/hotkeys": "workspace:^"
+    "@hotora/core": "workspace:^",
+    "@hotora/inputs": "workspace:^"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

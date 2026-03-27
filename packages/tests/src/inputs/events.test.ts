@@ -1,22 +1,22 @@
-import { createHotKeys, HotKeys, Keys } from "@hotora/hotkeys";
 import { MockEventProvider } from "../__mocks__/MockEventProvider";
+import { createInputsManager, InputsManager, Keys } from "@hotora/inputs";
 
-describe("HotKeys keyboard events", () => {
-  let hotKeys: HotKeys<MockEventProvider>;
+describe("InputsManager input events", () => {
+  let manager: InputsManager<MockEventProvider>;
   let provider: MockEventProvider;
 
   beforeEach(() => {
     provider = new MockEventProvider();
-    hotKeys = createHotKeys(provider);
+    manager = createInputsManager(provider);
   });
 
-  it("should call handler on keydown", () => {
+  it("should call handler on inputStart", () => {
     let test = { isConnected: true };
     const handler = jest.fn();
-    hotKeys.register([Keys.A], { handler }, test, "scope1");
+    manager.register([Keys.A], { handler }, test, "scope1");
     provider.emitObserve([{ target: test, isIntersecting: true }]);
 
-    provider.emitKeyDown(Keys.A);
+    provider.emitInputStart(Keys.A);
 
     expect(handler).toHaveBeenCalled();
   });
@@ -31,26 +31,26 @@ describe("HotKeys keyboard events", () => {
       parentElement: parent,
     };
 
-    hotKeys.register([Keys.A], { handler: h1 }, child, "s2");
-    hotKeys.register([Keys.A], { handler: h2 }, parent, "s1");
+    manager.register([Keys.A], { handler: h1 }, child, "s2");
+    manager.register([Keys.A], { handler: h2 }, parent, "s1");
 
     provider.emitObserve([
       { target: parent, isIntersecting: true },
       { target: child, isIntersecting: true },
     ]);
-    provider.emitKeyDown(Keys.A);
+    provider.emitInputStart(Keys.A);
 
     expect(h1).toHaveBeenCalled();
     expect(h2).not.toHaveBeenCalled();
   });
 
-  it("should remove step on keyup", () => {
+  it("should remove step on inputEnd", () => {
     const removeStepSpy = jest.spyOn(
-      (hotKeys as any).sequenceController,
+      (manager as any).sequenceController,
       "removeStep",
     );
-    provider.emitKeyDown(Keys.A);
-    provider.emitKeyUp(Keys.A);
+    provider.emitInputStart(Keys.A);
+    provider.emitInputEnd(Keys.A);
 
     expect(removeStepSpy).toHaveBeenCalledWith("KeyA");
   });

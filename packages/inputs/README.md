@@ -1,10 +1,10 @@
-# HotKeys
+# Inputs
 
-Lightweight hotkey manager with support for key sequences, scoped handlers, and pluggable event providers.
+Lightweight JavaScript and TypeScript library for handling keyboard shortcuts, gestures and complex sequences with customizable scoped actions.
 
 ## Features
 
-- Key combinations and sequences
+- Step combinations and sequences
 - Scoped handlers (local + global)
 - Element binding
 - Visibility-aware
@@ -17,7 +17,7 @@ Lightweight hotkey manager with support for key sequences, scoped handlers, and 
 ## Installation
 
 ```bash
-npm install @hotora/hotkeys
+npm install @hotora/inputs
 ```
 
 ---
@@ -27,62 +27,62 @@ npm install @hotora/hotkeys
 ### Default (browser)
 
 ```ts
-import { createHotKeys, Keys } from "@hotora/hotkeys";
+import { createInputsManager, Keys } from "@hotora/inputs";
 
-const hotKeys = createHotKeys();
+const inputsManager = createInputsManager();
 
-hotKeys.register([Keys.A], {
+inputsManager.register([Keys.A], {
   handler: () => {
     console.log("Pressed A");
   },
 });
 ```
 
-For correct operation, it is best to use 1 HotKeys instance at a time.
+For correct operation, it is best to use 1 InputsManager instance at a time.
 Otherwise stopPropagation may not work.
 
 ---
 
-## Key Combinations
+## Step Combinations
 
-Register multi-key combinations:
+Register multi-step combinations:
 
 ```ts
-hotKeys.register([Keys.ControlLeft, Keys.A], {
+inputsManager.register([Keys.ControlLeft, Keys.A], {
   handler: () => {
     console.log("Ctrl + A");
   },
 });
 ```
 
-The handler fires when all keys are pressed simultaneously.
+The handler fires when all steps are fired simultaneously.
 
 ---
 
-## Key Sequences
+## Step Sequences
 
 Register ordered sequences:
 
 ```ts
-hotKeys.register([[Keys.ControlLeft], [Keys.A]], {
+inputsManager.register([[Keys.ControlLeft], [Keys.A]], {
   handler: () => {
     console.log("Ctrl → A");
   },
 });
 ```
 
-The handler fires only when keys are pressed in order.
+The handler fires only when steps are fired in order.
 
 ---
 
-## Scoped Hotkeys
+## Scoped Sequences
 
-Bind hotkeys to an element and scope:
+Bind sequence to an element and scope:
 
 ```ts
 const element = document.getElementById("editor");
 
-hotKeys.register(
+inputsManager.register(
   [Keys.S],
   {
     handler: () => console.log("Save inside editor"),
@@ -97,7 +97,7 @@ hotKeys.register(
 ### How scopes work
 
 1. Scope is attached to an element
-2. On key press:
+2. On step fire:
 
 - active element is resolved
 - scope chain is built (element → parents → `$global`)
@@ -110,7 +110,7 @@ hotKeys.register(
 All handlers fallback to `$global`:
 
 ```ts
-hotKeys.register([Keys.Escape], {
+inputsManager.register([Keys.Escape], {
   handler: () => console.log("Global escape"),
 });
 ```
@@ -122,7 +122,7 @@ hotKeys.register([Keys.Escape], {
 Prevent execution in parent scopes:
 
 ```ts
-hotKeys.register([Keys.S], {
+inputsManager.register([Keys.S], {
   handler: (e) => {
     e.stopPropagation();
     console.log("Handled locally only");
@@ -134,23 +134,23 @@ hotKeys.register([Keys.S], {
 
 ## Active Element Resolution
 
-HotKeys determines active element using:
+InputsManager determines active element using:
 
 1. Last pointer interaction (click/touch)
 2. Only visible elements
 3. If multiple:
 
 - prefers last active
-- otherwise deepest in DOM
+- otherwise deepest
 
 ---
 
 ## Providers
 
-HotKeys is provider-based.  
+InputsManager is provider-based.  
 Event handling is abstracted via `EventProvider`.
 
-### DOMEventProvider (used by default)
+### DOMKeyboardEventProvider (used by default)
 
 Uses real DOM APIs:
 
@@ -159,9 +159,9 @@ Uses real DOM APIs:
 - `IntersectionObserver`
 
 ```ts
-import { createHotKeys, DOMEventProvider } from "@hotora/hotkeys";
+import { createInputsManager, DOMKeyboardEventProvider } from "@hotora/inputs";
 
-const hotKeys = createHotKeys(new DOMEventProvider());
+const inputsManager = createInputsManager(new DOMKeyboardEventProvider());
 ```
 
 ---
@@ -177,18 +177,18 @@ Safe for SSR and dynamic environments.
 ```ts
 import {
   LazyEventProvider,
-  DOMEventProvider,
-  createHotKeys,
-} from "@hotora/hotkeys";
+  DOMKeyboardEventProvider,
+  createInputsManager,
+} from "@hotora/inputs";
 
 const provider = new LazyEventProvider(() => {
   if (typeof window !== "undefined") {
-    return new DOMEventProvider();
+    return new DOMKeyboardEventProvider();
   }
   return null;
 });
 
-const hotKeys = createHotKeys(provider);
+const inputsManager = createInputsManager(provider);
 ```
 
 ---
@@ -198,7 +198,7 @@ const hotKeys = createHotKeys(provider);
 You can implement your own provider (e.g. canvas, WebGL, game engine):
 
 ```ts
-import type { EventProvider } from "@hotora/hotkeys";
+import type { EventProvider } from "";
 
 class MyProvider implements EventProvider<any, any> {
   // implement interface
@@ -209,13 +209,13 @@ class MyProvider implements EventProvider<any, any> {
 
 ## EventProvider Interface
 
-Custom providers implement `EventProvider<TElement, TKey>` to handle events in different environments:
+Custom providers implement `EventProvider<TElement, TStep>` to handle events in different environments:
 
 ```ts
-interface EventProvider<TElement, TKey> {
-  onKeyDown(handler: (key: TKey) => void, signal: AbortSignal): void;
-  onKeyUp(handler: (key: TKey) => void, signal: AbortSignal): void;
-  onPointer(handler: (target: TElement) => void, signal: AbortSignal): void;
+interface EventProvider<TElement, TStep> {
+  onInputStart(handler: InputHandler<TStep>, signal: AbortSignal): void;
+  onInputEnd(handler: InputHandler<TStep>, signal: AbortSignal): void;
+  onPointer(handler: PointerHandler<TElement>, signal: AbortSignal): void;
   observe(
     element: TElement,
     callback: (entries: Entry<TElement>[]) => void,
@@ -227,36 +227,36 @@ interface EventProvider<TElement, TKey> {
 }
 ```
 
-- Allows HotKeys to work with browser DOM, SSR, or test environments
+- Allows InputsManager to work with browser DOM, SSR, or test environments
 - Supports lazy initialization for SSR or deferred providers
 - Handlers are automatically queued until the provider is ready
 
 ## API
 
-### Hotkeys
+### InputsManager
 
-#### `createHotKeys(provider?)`
+#### `createInputsManager(provider?)`
 
 Creates a new instance with a specific EventProvider.
 
 ```ts
-const hotKeys = createHotKeys(provider);
+const inputsManager = createInputsManager(provider);
 ```
 
 ---
 
 #### `register(sequence, setup, element?, scope?)`
 
-Registers a hotkey or sequence.
+Registers a steps or stepsSequence.
 
 ```ts
 register(
-  Combo | ComboSequence,
+  Steps | StepsSequence,
   {
     handler: (event) => void;
     clearDuration?: number;
   },
-  element?: HTMLElement,
+  element?: TElement,
   scope?: string
 ): ActionId
 ```
@@ -265,7 +265,7 @@ register(
 
 #### `unregister(id)`
 
-Removes a previously registered hotkey.
+Removes a previously registered handlers.
 
 ---
 
@@ -319,7 +319,7 @@ Handler receives:
 
 ## SSR Notes
 
-- `DOMEventProvider` is **not SSR-safe**
+- `DOMKeyboardEventProvider` is **not SSR-safe**
 - Use `LazyEventProvider` for:
   - SSR frameworks (Next.js, Nuxt)
   - dynamic imports
@@ -330,13 +330,13 @@ Handler receives:
 ## Example
 
 ```ts
-import { createHotKeys } from "@hotora/hotkeys";
+import { createInputsManager } from "@hotora/inputs";
 
 const modal = document.getElementById("modal");
 
-const hotKeys = createHotKeys();
+const inputsManager = createInputsManager();
 
-hotKeys.register(
+inputsManager.register(
   [Keys.Escape],
   {
     handler: () => console.log("Close modal"),
@@ -345,7 +345,7 @@ hotKeys.register(
   "modal",
 );
 
-hotKeys.register([Keys.Escape], {
+inputsManager.register([Keys.Escape], {
   handler: () => console.log("Global escape fallback"),
 });
 ```

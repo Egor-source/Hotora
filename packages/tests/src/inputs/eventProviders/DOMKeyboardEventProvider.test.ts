@@ -4,13 +4,13 @@
 
 import "../../__mocks__/IntersectionObserver";
 import { fireEvent } from "@testing-library/dom";
-import { DOMEventProvider } from "@hotora/hotkeys";
+import { DOMKeyboardEventProvider } from "@hotora/inputs";
 
-describe("DOMEventProvider", () => {
-  let provider: DOMEventProvider;
+describe("DOMKeyboardEventProvider", () => {
+  let provider: DOMKeyboardEventProvider;
 
   beforeEach(() => {
-    provider = new DOMEventProvider();
+    provider = new DOMKeyboardEventProvider();
   });
 
   afterEach(() => {
@@ -18,11 +18,11 @@ describe("DOMEventProvider", () => {
     jest.clearAllMocks();
   });
 
-  test("onKeyDown should call handler when key pressed", () => {
+  test("onInputStart should call handler when key pressed", () => {
     const handler = jest.fn();
     const controller = new AbortController();
 
-    provider.onKeyDown(handler, controller.signal);
+    provider.onInputStart(handler, controller.signal);
     fireEvent.keyDown(document, { code: "KeyA" });
 
     expect(handler).toHaveBeenCalledWith("KeyA");
@@ -32,11 +32,11 @@ describe("DOMEventProvider", () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  test("onKeyUp should call handler when key released", () => {
+  test("onInputEnd should call handler when key released", () => {
     const handler = jest.fn();
     const controller = new AbortController();
 
-    provider.onKeyUp(handler, controller.signal);
+    provider.onInputEnd(handler, controller.signal);
 
     fireEvent.keyUp(document, { code: "KeyA" });
 

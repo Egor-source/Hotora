@@ -4,11 +4,11 @@ import type { ActionId, Fired, SequenceAction, Stage } from "@hotora/core";
 import type {
   Entry,
   EventProvider,
-  HotkeysEvent,
+  InputsEvent,
   InferElement,
-  InferKey,
+  InferStep,
 } from "./types";
-import { DOMEventProvider } from "./eventProviders/DOMEventProvider";
+import { DOMKeyboardEventProvider } from "./eventProviders/DOMKeyboardEventProvider";
 import { LazyEventProvider } from "./eventProviders/LazyEventProvider";
 
 /**
@@ -17,90 +17,96 @@ import { LazyEventProvider } from "./eventProviders/LazyEventProvider";
  * In non-browser environments, it will be `null` and a provider must be supplied manually.
  */
 const defaultProvider = new LazyEventProvider(() =>
-  typeof window !== "undefined" ? new DOMEventProvider() : null,
+  typeof window !== "undefined" ? new DOMKeyboardEventProvider() : null,
 );
 
 /**
- * Creates a HotKeys instance using the default provider.
+ * Creates a InputManager instance using the default provider.
  * * Ideal for standard browser usage (SSR-safe). By default, it uses
  * `LazyEventProvider<DOMEventProvider>`.
  *
  * @example
- * import { createHotKeys } from "@hotora/hotkeys";
- * const hotKeys = createHotKeys();
+ * import { createInputsManager } from "@hotora/inputs";
+ * const inputsManager = createInputsManager();
  *
- * @returns {HotKeys<LazyEventProvider<DOMEventProvider>} A new HotKeys instance using the default provider.
+ * @returns {InputsManager<LazyEventProvider<DOMKeyboardEventProvider>} A new InputsManager instance using the default provider.
  */
-export function createHotKeys(): HotKeys<typeof defaultProvider>;
+export function createInputsManager(): InputsManager<typeof defaultProvider>;
 
 /**
- * Creates a HotKeys instance with a custom event provider.
+ * Creates a InputsManager instance with a custom event provider.
  * * Use this to handle events on specific elements or non-DOM environments.
- * Types for elements and keys will be automatically inferred from the provider.
+ * Types for elements and steps will be automatically inferred from the provider.
  *
- * @template {EventProvider<InferElement<TProvider>, InferKey<TProvider>>} TProvider
+ * @template {EventProvider<InferElement<TProvider>, InferStep<TProvider>>} TProvider
  * @param {TProvider} provider - A custom EventProvider instance.
  * @example
- * import { createHotKeys, EventProvider } from "@hotora/hotkeys";
+ * import { createInputsManager, EventProvider } from "@hotora/inputs";
  *  class CustomEventProvider implements EventProvider<any, any> {
  * // interface implementation
  * }
  * const provider = new CustomEventProvider();
- * const hotKeys = createHotKeys(provider);
+ * const inputsManager = createInputsManager(provider);
  *
- * @returns {HotKeys<TProvider>} A new HotKeys instance typed according to the provided provider.
+ * @returns {InputsManager<TProvider>} A new InputsManager instance typed according to the provided provider.
  */
-export function createHotKeys<
-  TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
->(provider: TProvider): HotKeys<TProvider>;
+export function createInputsManager<
+  TProvider extends EventProvider<
+    InferElement<TProvider>,
+    InferStep<TProvider>
+  >,
+>(provider: TProvider): InputsManager<TProvider>;
 
 /**
- * Factory function implementation to create a HotKeys instance.
+ * Factory function implementation to create a InputsManager instance.
  */
-export function createHotKeys(provider?: EventProvider<any, any>) {
-  return new HotKeys(provider ?? defaultProvider);
+export function createInputsManager(provider?: EventProvider<any, any>) {
+  return new InputsManager(provider ?? defaultProvider);
 }
 
 /**
- * HotKeys manager
+ * InputsManager
  *
- * Handles keyboard shortcuts and sequences with full DOM integration.
+ * Handles shortcuts and sequences.
  * Supports both browser and non-browser environments via EventProvider.
  *
  * Key features:
  * - Supports key **combinations** and **ordered sequences** (via SequenceController)
- * - **Scoped handlers**: hotkeys can be bound to specific DOM elements or named scopes
+ * - **Scoped handlers**: inputs can be bound to specific elements (eg. DOM elements) and named scopes
  * - **Element visibility tracking**: only visible elements are considered active
  * - **Active element resolution**:
  *    - last pointer interaction (mouse/touch)
- *    - DOM depth if multiple elements are visible
+ *    - Elements depth if multiple elements are visible
  * - **Scope chain building**: walks from element to root + global fallback
  * - **Propagation control**: handlers can stop propagation between scopes
  * - **Custom EventProvider** support for non-browser environments
- * - Automatic cleanup of disconnected DOM elements
+ * - Automatic cleanup of disconnected elements
  *
  * Environment notes:
  * - Safe for SSR use LazyProvider
  *
  * @internal
- * Prefer using `createHotKeys()` instead.
+ * Prefer using `createInputsManager()` instead.
  */
-export class HotKeys<
-  TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
+export class InputsManager<
+  TProvider extends EventProvider<
+    InferElement<TProvider>,
+    InferStep<TProvider>
+  >,
 > {
   /** Internal controller managing key sequences and combination state */
   private sequenceController = new SequenceController<
-    InferKey<TProvider>,
-    HotkeysEvent<InferKey<TProvider>>
+    InferStep<TProvider>,
+    InputsEvent<InferStep<TProvider>>
   >();
 
   /**
-   * Maps DOM elements to their scope names.
+   * Maps elements to their scope names.
    * WeakMap is used to avoid memory leaks when elements are removed.
    */
   private elements = new WeakMap<InferElement<TProvider>, string>();
 
-  /** Set of currently visible elements, tracked via IntersectionObserver */
+  /** Set of currently visible elements, tracked via EvenProvider observer */
   private visibleElements = new Set<InferElement<TProvider>>();
 
   /** Last active element determined by pointer interaction */
@@ -110,18 +116,21 @@ export class HotKeys<
   private abortController = new AbortController();
 
   /**
-   * Initializes the HotKeys manager.
+   * Initializes the InputsManager.
    *
    * @param provider - Optional custom EventProvider.
    *                   Defaults to DOMEventProvider in browser.
    * @throws If no provider is available (non-browser environment without provider)
    */
   constructor(private provider: TProvider) {
-    this.provider.onKeyDown(
-      this.onKeyDown.bind(this),
+    this.provider.onInputStart(
+      this.onInputStart.bind(this),
       this.abortController.signal,
     );
-    this.provider.onKeyUp(this.onKeyUp.bind(this), this.abortController.signal);
+    this.provider.onInputEnd(
+      this.onInputEnd.bind(this),
+      this.abortController.signal,
+    );
     this.provider.onPointer(
       this.onPointer.bind(this),
       this.abortController.signal,
@@ -129,18 +138,18 @@ export class HotKeys<
   }
 
   /**
-   * Registers a hotkey or key sequence.
+   * Registers a steps or steps sequence.
    *
-   * @param sequence - key combination or ordered sequence
+   * @param sequence - steps combination or ordered sequence
    * @param setup - handler configuration (without id and sequence)
    * @param element - optional element to bind scope to
    * @param scope - optional scope name; if element provided, scope is recommended
    * @returns action identifier
    */
   register(
-    sequence: Stage<InferKey<TProvider>> | Stage<InferKey<TProvider>>[],
+    sequence: Stage<InferStep<TProvider>> | Stage<InferStep<TProvider>>[],
     setup: Omit<
-      SequenceAction<InferKey<TProvider>, HotkeysEvent<InferKey<TProvider>>>,
+      SequenceAction<InferStep<TProvider>, InputsEvent<InferStep<TProvider>>>,
       "id" | "sequence"
     >,
     element?: InferElement<TProvider>,
@@ -159,7 +168,7 @@ export class HotKeys<
   }
 
   /**
-   * Unregisters a previously registered hotkey by its action id.
+   * Unregisters a previously registered steps by its action id.
    *
    * @param id - identifier returned from `register`
    */
@@ -196,18 +205,18 @@ export class HotKeys<
   };
 
   /**
-   * Key down handler.
-   * - Adds the key to the current sequence
+   * Input start handler.
+   * - Adds the step to the current sequence
    * - Resolves active element
    * - Walks through the scope chain
    * - Executes all matching handlers
    * - Allows stopping propagation between scopes
    */
-  private onKeyDown = (key: InferKey<TProvider>) => {
+  private onInputStart = (step: InferStep<TProvider>) => {
     const activeEl = this.resolveActiveElement();
     const scopes = this.getScopeChain(activeEl);
 
-    this.sequenceController.addStep(key);
+    this.sequenceController.addStep(step);
 
     let stopPropagation = false;
 
@@ -215,8 +224,8 @@ export class HotKeys<
       if (stopPropagation) break;
 
       const fired: Fired<
-        InferKey<TProvider>,
-        HotkeysEvent<InferKey<TProvider>>
+        InferStep<TProvider>,
+        InputsEvent<InferStep<TProvider>>
       > = this.sequenceController.process(scope);
 
       fired.forEach(([evt, handler]) => {
@@ -225,17 +234,17 @@ export class HotKeys<
             stopPropagation = true;
           },
           ...evt,
-        } as HotkeysEvent<InferKey<TProvider>>);
+        } as InputsEvent<InferStep<TProvider>>);
       });
     }
   };
 
   /**
-   * Key up handler.
-   * Removes the key from the current sequence state.
+   * Input end handler.
+   * Removes the step from the current sequence state.
    */
-  private onKeyUp = (key: InferKey<TProvider>) => {
-    this.sequenceController.removeStep(key);
+  private onInputEnd = (step: InferStep<TProvider>) => {
+    this.sequenceController.removeStep(step);
   };
 
   /**
@@ -305,7 +314,7 @@ export class HotKeys<
   }
 
   /**
-   * Calculates the DOM depth of an element.
+   * Calculates the depth of an element.
    * Used to resolve the deepest visible element when multiple are present.
    *
    * @param el - element to measure
@@ -342,7 +351,7 @@ export class HotKeys<
   }
 
   /**
-   * Destroys the HotKeys instance.
+   * Destroys the InputsManager instance.
    * Aborts all subscriptions and cleans up internal state.
    */
   destroy() {

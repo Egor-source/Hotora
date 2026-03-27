@@ -1,14 +1,14 @@
 import type {
   Entry,
   EventProvider,
-  KeyHandler,
+  InputHandler,
   Keys,
   ObserveHandler,
   PointerHandler,
 } from "../types";
 
 /**
- * DOMEventProvider
+ * DOMKeyboardEventProvider
  *
  * Default browser-based implementation of EventProvider.
  *
@@ -46,15 +46,18 @@ import type {
  *
  * Usage:
  * ```ts
- * const provider = new DOMEventProvider();
+ * const provider = new DOMKeyboardEventProvider();
  * ```
  */
-export class DOMEventProvider implements EventProvider<HTMLElement, Keys> {
+export class DOMKeyboardEventProvider implements EventProvider<
+  HTMLElement,
+  Keys
+> {
   /** Registered keydown handlers */
-  private keyDownHandlers = new Set<KeyHandler<Keys>>();
+  private keyDownHandlers = new Set<InputHandler<Keys>>();
 
   /** Registered keyup handlers */
-  private keyUpHandlers = new Set<KeyHandler<Keys>>();
+  private keyUpHandlers = new Set<InputHandler<Keys>>();
 
   /** Registered pointer handlers (mouse / touch) */
   private pointerHandlers = new Set<PointerHandler<HTMLElement>>();
@@ -161,7 +164,7 @@ export class DOMEventProvider implements EventProvider<HTMLElement, Keys> {
    * - Ignores repeated key presses
    * - Automatically unsubscribes on AbortSignal
    */
-  onKeyDown(handler: KeyHandler<Keys>, signal: AbortSignal): void {
+  onInputStart(handler: InputHandler<Keys>, signal: AbortSignal): void {
     this.keyDownHandlers.add(handler);
 
     signal.addEventListener("abort", () => {
@@ -174,7 +177,7 @@ export class DOMEventProvider implements EventProvider<HTMLElement, Keys> {
    *
    * Automatically unsubscribes on AbortSignal.
    */
-  onKeyUp(handler: KeyHandler<Keys>, signal: AbortSignal): void {
+  onInputEnd(handler: InputHandler<Keys>, signal: AbortSignal): void {
     this.keyUpHandlers.add(handler);
 
     signal.addEventListener("abort", () => {

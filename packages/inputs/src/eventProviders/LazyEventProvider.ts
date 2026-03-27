@@ -1,10 +1,10 @@
 import type {
   EventProvider,
-  KeyHandler,
+  InputHandler,
   PointerHandler,
   ObserveHandler,
   InferElement,
-  InferKey,
+  InferStep,
 } from "../types";
 
 /**
@@ -16,7 +16,7 @@ import type {
  * - plugin-based architectures where provider may appear later
  *
  * How it works:
- * - All subscription methods (`onKeyDown`, `onKeyUp`, `onPointer`, `observe`)
+ * - All subscription methods (`onInputStart`, `onInputEnd`, `onPointer`, `observe`)
  *   are buffered until the real provider is available.
  * - Once the provider is resolved (sync or async), all buffered subscriptions
  *   are replayed in order.
@@ -46,22 +46,26 @@ import type {
  * - If provider resolves to null, these methods will throw after init
  *
  * @typeParam TElement - element type (e.g. HTMLElement or custom)
- * @typeParam TKey - key type (e.g. Keys enum)
+ * @typeParam TStep - step type (e.g. Keys enum)
  */
 export class LazyEventProvider<
-  TProvider extends EventProvider<InferElement<TProvider>, InferKey<TProvider>>,
-> implements EventProvider<InferElement<TProvider>, InferKey<TProvider>> {
+  TProvider extends EventProvider<
+    InferElement<TProvider>,
+    InferStep<TProvider>
+  >,
+> implements EventProvider<InferElement<TProvider>, InferStep<TProvider>> {
   /** Resolved real provider (or null if unavailable) */
   private provider: TProvider | null = null;
 
-  /** Buffered keydown subscriptions */
-  private keyDownHandlers: Array<
-    [KeyHandler<InferKey<TProvider>>, AbortSignal]
+  /** Buffered inputStart subscriptions */
+  private inputStartHandlers: Array<
+    [InputHandler<InferStep<TProvider>>, AbortSignal]
   > = [];
 
-  /** Buffered keyup subscriptions */
-  private keyUpHandlers: Array<[KeyHandler<InferKey<TProvider>>, AbortSignal]> =
-    [];
+  /** Buffered inputEnd subscriptions */
+  private inputEndHandlers: Array<
+    [InputHandler<InferStep<TProvider>>, AbortSignal]
+  > = [];
 
   /** Buffered pointer subscriptions */
   private pointerHandlers: Array<
@@ -107,15 +111,19 @@ export class LazyEventProvider<
 
       if (!this.provider) return;
 
-      this.keyDownHandlers.forEach(([h, s]) => this.provider!.onKeyDown(h, s));
-      this.keyUpHandlers.forEach(([h, s]) => this.provider!.onKeyUp(h, s));
+      this.inputStartHandlers.forEach(([h, s]) =>
+        this.provider!.onInputStart(h, s),
+      );
+      this.inputEndHandlers.forEach(([h, s]) =>
+        this.provider!.onInputEnd(h, s),
+      );
       this.pointerHandlers.forEach(([h, s]) => this.provider!.onPointer(h, s));
       this.observeHandlers.forEach(([el, cb, s]) =>
         this.provider!.observe(el, cb, s),
       );
 
-      this.keyDownHandlers = [];
-      this.keyUpHandlers = [];
+      this.inputStartHandlers = [];
+      this.inputEndHandlers = [];
       this.pointerHandlers = [];
       this.observeHandlers = [];
     })();
@@ -131,29 +139,32 @@ export class LazyEventProvider<
   }
 
   /**
-   * Subscribes to keydown events.
+   * Subscribes to inputStart events.
    * Buffered until provider is ready.
    */
-  onKeyDown(handler: KeyHandler<InferKey<TProvider>>, signal: AbortSignal) {
+  onInputStart(
+    handler: InputHandler<InferStep<TProvider>>,
+    signal: AbortSignal,
+  ) {
     if (this.isReady) {
       this.assertProvider();
-      this.provider!.onKeyDown(handler, signal);
+      this.provider!.onInputStart(handler, signal);
     } else {
-      this.keyDownHandlers.push([handler, signal]);
+      this.inputStartHandlers.push([handler, signal]);
       this.init();
     }
   }
 
   /**
-   * Subscribes to keyup events.
+   * Subscribes to inputEnd events.
    * Buffered until provider is ready.
    */
-  onKeyUp(handler: KeyHandler<InferKey<TProvider>>, signal: AbortSignal) {
+  onInputEnd(handler: InputHandler<InferStep<TProvider>>, signal: AbortSignal) {
     if (this.isReady) {
       this.assertProvider();
-      this.provider!.onKeyUp(handler, signal);
+      this.provider!.onInputEnd(handler, signal);
     } else {
-      this.keyUpHandlers.push([handler, signal]);
+      this.inputEndHandlers.push([handler, signal]);
       this.init();
     }
   }

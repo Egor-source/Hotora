@@ -11,7 +11,7 @@ const config = {
   testMatch: ["**/*.test.ts"],
   moduleNameMapper: {
     "^@hotora/core$": resolve(__dirname, "../core/src/index.ts"),
-    "^@hotora/hotkeys$": resolve(__dirname, "../hotkeys/src/index.ts"),
+    "^@hotora/inputs$": resolve(__dirname, "../inputs/src/index.ts"),
   },
 };
 
