@@ -1,6 +1,6 @@
 {
   "name": "@hotora/inputs",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Lightweight JavaScript and TypeScript library for handling keyboard shortcuts, gestures and complex sequences with customizable scoped actions.",
   "author": "egorkk1211@gmail.com",
   "license": "MIT",
@@ -53,6 +53,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@hotora/core": "^2.0.3"
+    "@hotora/core": "workspace:^"
   }
 }

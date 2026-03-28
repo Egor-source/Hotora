@@ -920,7 +920,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hotora/core@npm:^2.0.2, @hotora/core@workspace:^, @hotora/core@workspace:packages/core":
+"@hotora/core@workspace:^, @hotora/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@hotora/core@workspace:packages/core"
   dependencies:
@@ -933,9 +933,22 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hotora/inputs@workspace:packages/inputs"
   dependencies:
-    "@hotora/core": "npm:^2.0.2"
+    "@hotora/core": "workspace:^"
     tsup: "npm:^8.5.1"
     typescript: "npm:^5.1.6"
+  languageName: unknown
+  linkType: soft
+
+"@hotora/react-inputs@workspace:packages/react-inputs":
+  version: 0.0.0-use.local
+  resolution: "@hotora/react-inputs@workspace:packages/react-inputs"
+  dependencies:
+    "@hotora/inputs": "workspace:^"
+    "@types/react": "npm:^18.0.0"
+    tsup: "npm:^8.5.1"
+    typescript: "npm:^5.1.6"
+  peerDependencies:
+    react: ">=16.8.0"
   languageName: unknown
   linkType: soft
 
@@ -1668,9 +1681,9 @@ __metadata:
   linkType: hard
 
 "@sinclair/typebox@npm:^0.34.0":
-  version: 0.34.48
-  resolution: "@sinclair/typebox@npm:0.34.48"
-  checksum: 10c0/e09f26d8ad471a07ee64004eea7c4ec185349a1f61c03e87e71ea33cbe98e97959940076c2e52968a955ffd4c215bf5ba7035e77079511aac7935f25e989e29d
+  version: 0.34.49
+  resolution: "@sinclair/typebox@npm:0.34.49"
+  checksum: 10c0/16b7d87f039a49b68c10bb4cdcae2ce5242b2472228851fd6483731616aba4ef977690aa517b230a8d20da8185bb416eb34e326f30568b3963c1cf26b05d1ad8
   languageName: node
   linkType: hard
 
@@ -1882,6 +1895,23 @@ __metadata:
   version: 12.20.55
   resolution: "@types/node@npm:12.20.55"
   checksum: 10c0/3b190bb0410047d489c49bbaab592d2e6630de6a50f00ba3d7d513d59401d279972a8f5a598b5bb8ddc1702f8a2f4ec57a65d93852f9c329639738e7053637d1
+  languageName: node
+  linkType: hard
+
+"@types/prop-types@npm:*":
+  version: 15.7.15
+  resolution: "@types/prop-types@npm:15.7.15"
+  checksum: 10c0/b59aad1ad19bf1733cf524fd4e618196c6c7690f48ee70a327eb450a42aab8e8a063fbe59ca0a5701aebe2d92d582292c0fb845ea57474f6a15f6994b0e260b2
+  languageName: node
+  linkType: hard
+
+"@types/react@npm:^18.0.0":
+  version: 18.3.28
+  resolution: "@types/react@npm:18.3.28"
+  dependencies:
+    "@types/prop-types": "npm:*"
+    csstype: "npm:^3.2.2"
+  checksum: 10c0/683e19cd12b5c691215529af2e32b5ffbaccae3bf0ba93bfafa0e460e8dfee18423afed568be2b8eadf4b837c3749dd296a4f64e2d79f68fa66962c05f5af661
   languageName: node
   linkType: hard
 
@@ -2822,6 +2852,13 @@ __metadata:
     "@asamuzakjp/css-color": "npm:^3.2.0"
     rrweb-cssom: "npm:^0.8.0"
   checksum: 10c0/71add1b0ffafa1bedbef6855db6189b9523d3320e015a0bf3fbd504760efb9a81e1f1a225228d5fa892ee58e56d06994ca372e7f4e461cda7c4c9985fe075f65
+  languageName: node
+  linkType: hard
+
+"csstype@npm:^3.2.2":
+  version: 3.2.3
+  resolution: "csstype@npm:3.2.3"
+  checksum: 10c0/cd29c51e70fa822f1cecd8641a1445bed7063697469d35633b516e60fe8c1bde04b08f6c5b6022136bb669b64c63d4173af54864510fbb4ee23281801841a3ce
   languageName: node
   linkType: hard
 

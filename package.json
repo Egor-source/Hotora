@@ -4,6 +4,7 @@
   "scripts": {
     "lint:fix": "eslint . --fix",
     "format:fix": "prettier --write .",
+    "version": "yarn changeset version && yarn install",
     "lint": "eslint . && prettier -c .",
     "fix": "yarn run format:fix && yarn run lint:fix",
     "test": "yarn workspace @hotora/tests run test",
