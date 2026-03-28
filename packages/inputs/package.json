@@ -53,6 +53,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@hotora/core": "^2.0.3"
+    "@hotora/core": "workspace:^"
   }
 }

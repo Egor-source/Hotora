@@ -920,7 +920,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@hotora/core@npm:^2.0.3, @hotora/core@workspace:^, @hotora/core@workspace:packages/core":
+"@hotora/core@workspace:^, @hotora/core@workspace:packages/core":
   version: 0.0.0-use.local
   resolution: "@hotora/core@workspace:packages/core"
   dependencies:
@@ -933,7 +933,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hotora/inputs@workspace:packages/inputs"
   dependencies:
-    "@hotora/core": "npm:^2.0.3"
+    "@hotora/core": "workspace:^"
     tsup: "npm:^8.5.1"
     typescript: "npm:^5.1.6"
   languageName: unknown
