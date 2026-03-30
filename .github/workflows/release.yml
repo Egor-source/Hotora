@@ -49,9 +49,13 @@ jobs:
           npx changeset version
           yarn install
           git add .
-          git commit -m "chore: version bump and workspace sync [skip ci]"
-          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          git push origin HEAD:$CURRENT_BRANCH
+          if git diff --cached --quiet; then
+            echo "No changes to commi
+          else
+            git commit -m "chore: version bump and workspace sync [skip ci]"
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            git push origin HEAD:$CURRENT_BRANCH
+          fi
 
       - name: Build packages
         run: yarn build
