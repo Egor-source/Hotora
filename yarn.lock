@@ -943,8 +943,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@hotora/react-inputs@workspace:packages/react-inputs"
   dependencies:
+    react: "npm:^19.2.4"
     tsup: "npm:^8.5.1"
     typescript: "npm:^5.1.6"
+  peerDependencies:
+    "@hotora/inputs": ">=1.0.3"
+    react: ">=16.8.0"
   languageName: unknown
   linkType: soft
 
