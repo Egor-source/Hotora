@@ -8,7 +8,7 @@
     "lint": "eslint . && prettier -c .",
     "fix": "yarn run format:fix && yarn run lint:fix",
     "test": "yarn workspace @hotora/tests run test",
-    "build": "yarn workspaces foreach -A -p -t run build",
+    "build": "yarn workspaces foreach -A -t run build",
     "prepare": "husky"
   },
   "workspaces": [
